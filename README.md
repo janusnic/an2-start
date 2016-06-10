@@ -1,18 +1,14 @@
 # an2-start
 
-A super-simple Angular 2 application in TypeScript unit 03
+A super-simple Angular 2 application in TypeScript unit 04
 
-It Takes Many Heroes
+Our app is growing. Use cases are flowing in for reusing components, passing data to components, and creating more reusable assets. Let's separate the heroes list from the hero details and make the details component reusable.
 
-Our story needs more heroes. We’ll expand our Tour of Heroes app to display a list of heroes, allow the user to select a hero, and display the hero’s details.
-
-Run the live example for part 2
-
-Let’s take stock of what we’ll need to display a list of heroes. First, we need a list of heroes. We want to display those heroes in the view’s template, so we’ll need a way to do that.
+Run the live example for part 3
 
 Where We Left Off
 
-Before we continue with Part 2 of the Tour of Heroes, let’s verify we have the following structure after Part 1. If not, we’ll need to go back to Part 1 and figure out what we missed.
+Before we continue with our Tour of Heroes, let’s verify we have the following structure. If not, we’ll need to go back and follow the previous chapters.
 
 angular2-tour-of-heroes
 app
@@ -34,91 +30,226 @@ We want to start the TypeScript compiler, have it watch for changes, and start o
 npm start
 This will keep the application running while we continue to build the Tour of Heroes.
 
-Displaying Our Heroes
+Making a Hero Detail Component
 
-Creating heroes
+Our heroes list and our hero details are in the same component in the same file. They're small now but each could grow. We are sure to receive new requirements for one and not the other. Yet every change puts both components at risk and doubles the testing burden without benefit. If we had to reuse the hero details elsewhere in our app, the heroes list would tag along for the ride.
 
-Let’s create an array of ten heroes at the bottom of app.component.ts.
+Our current component violates the Single Responsibility Principle https://blog.8thlight.com/uncle-bob/2014/05/08/SingleReponsibilityPrinciple.html. It's only a tutorial but we can still do things right — especially if doing them right is easy and we learn how to build Angular apps in the process.
 
-app.component.ts (Hero array)
+Let’s break the hero details out into its own component.
 
-  var HEROES: Hero[] = [
-    { "id": 11, "name": "Mr. Nice" },
-    { "id": 12, "name": "Narco" },
-    { "id": 13, "name": "Bombasto" },
-    { "id": 14, "name": "Celeritas" },
-    { "id": 15, "name": "Magneta" },
-    { "id": 16, "name": "RubberMan" },
-    { "id": 17, "name": "Dynama" },
-    { "id": 18, "name": "Dr IQ" },
-    { "id": 19, "name": "Magma" },
-    { "id": 20, "name": "Tornado" }
-  ];
-The HEROES array is of type Hero, the class defined in part one, to create an array of heroes. We aspire to fetch this list of heroes from a web service, but let’s take small steps first and display mock heroes.
+Separating the Hero Detail Component
 
-Exposing heroes
+Add a new file named hero-detail.component.ts to the app folder and create HeroDetailComponent as follows.
 
-Let’s create a property in AppComponent that exposes the heroes for binding.
+hero-detail.component.ts (initial version)
 
-app.component.ts (Hero array property)
+import { Component, Input } from '@angular/core';
 
-public heroes = HEROES;
-We did not have to define the heroes type. TypeScript can infer it from the HEROES array.
+@Component({
+  selector: 'my-hero-detail',
+})
+export class HeroDetailComponent {
+}
+Naming conventions
 
-We could have defined the heroes list here in this component class. But we know that ultimately we’ll get the heroes from a data service. Because we know where we are heading, it makes sense to separate the hero data from the class implementation from the start.
+We like to identify at a glance which classes are components and which files contain components.
 
-Displaying heroes in a template
+Notice that we have an AppComponent in a file named app.component.ts and our new HeroDetailComponent is in a file named hero-detail.component.ts.
 
-Our component has heroes. Let’s create an unordered list in our template to display them. We’ll insert the following chunk of HTML below the title and above the hero details.
+All of our component names end in "Component". All of our component file names end in ".component".
 
-app.component.ts (Heroes template)
+We spell our file names in lower dash case (AKA "kebab-case") so we don't worry about case sensitivity on the server or in source control.
 
+We begin by importing the Component and Input decorators from Angular because we're going to need them soon.
+
+We create metadata with the @Component decorator where we specify the selector name that identifies this component's element. Then we export the class to make it available to other components.
+
+When we finish here, we'll import it into AppComponent and create a corresponding <my-hero-detail> element.
+
+Hero Detail Template
+
+At the moment, the Heroes and Hero Detail views are combined in one template in AppComponent. Let’s cut the Hero Detail content from AppComponent and paste it into the new template property of HeroDetailComponent.
+
+We previously bound to the selectedHero.name property of the AppComponent. Our HeroDetailComponent will have a hero property, not a selectedHero property. So we replace selectedHero with hero everywhere in our new template. That's our only change. The result looks like this:
+
+hero-detail.component.ts (template)
+
+template: `
+  <div *ngIf="hero">
+    <h2>{{hero.name}} details!</h2>
+    <div><label>id: </label>{{hero.id}}</div>
+    <div>
+      <label>name: </label>
+      <input [(ngModel)]="hero.name" placeholder="name"/>
+    </div>
+  </div>
+`
+Now our hero detail layout exists only in the HeroDetailComponent.
+
+Add the hero property
+
+Let’s add that hero property we were talking about to the component class.
+
+
+hero: Hero;
+Uh oh. We declared the hero property as type Hero but our Hero class is over in the app.component.ts file. We have two components, each in their own file, that need to reference the Hero class.
+
+We solve the problem by relocating the Hero class from app.component.ts to its own hero.ts file.
+
+hero.ts (Exported Hero class)
+
+export class Hero {
+  id: number;
+  name: string;
+}
+We export the Hero class from hero.ts because we'll need to reference it in both component files. Add the following import statement near the top of both app.component.ts and hero-detail.component.ts.
+
+hero-detail.component.ts and app.component.ts (Import the Hero class)
+
+import { Hero } from './hero';
+The hero property is an input
+
+The HeroDetailComponent must be told what hero to display. Who will tell it? The parent AppComponent!
+
+The AppComponent knows which hero to show: the hero that the user selected from the list. The user's selection is in its selectedHero property.
+
+We will soon update the AppComponent template so that it binds its selectedHero property to the hero property of our HeroDetailComponent. The binding might look like this:
+
+
+<my-hero-detail [hero]="selectedHero"></my-hero-detail>
+Notice that the hero property is the target of a property binding — it's in square brackets to the left of the (=).
+
+Angular insists that we declare a target property to be an input property. If we don't, Angular rejects the binding and throws an error.
+
+We explain input properties in more detail here where we also explain why target properties require this special treatment and source properties do not.
+
+There are a couple of ways we can declare that hero is an input. We'll do it the way we prefer, by annotating the hero property with the @Input decorator that we imported earlier.
+
+
+  @Input() 
+  hero: Hero;
+Learn more about the @Input() decorator in the Attribute Directives chapter https://angular.io/docs/ts/latest/guide/attribute-directives.html#input.
+
+Refresh the AppComponent
+
+We return to the AppComponent and teach it to use the HeroDetailComponent.
+
+We begin by importing the HeroDetailComponent so we can refer to it.
+
+
+import { HeroDetailComponent } from './hero-detail.component';
+Find the location in the template where we removed the Hero Detail content and add an element tag that represents the HeroDetailComponent.
+
+
+<my-hero-detail></my-hero-detail>
+my-hero-detail is the name we set as the selector in the HeroDetailComponent metadata.
+
+The two components won't coordinate until we bind the selectedHero property of the AppComponent to the HeroDetailComponent element's hero property like this:
+
+
+<my-hero-detail [hero]="selectedHero"></my-hero-detail>
+The AppComponent’s template should now look like this
+
+app.component.ts (Template)
+
+template:`
+  <h1>{{title}}</h1>
   <h2>My Heroes</h2>
   <ul class="heroes">
-    <li>
-      <!-- each hero goes here -->
+    <li *ngFor="let hero of heroes"
+      [class.selected]="hero === selectedHero"
+      (click)="onSelect(hero)">
+      <span class="badge">{{hero.id}}</span> {{hero.name}}
     </li>
   </ul>
-Now we have a template that we can fill with our heroes.
+  <my-hero-detail [hero]="selectedHero"></my-hero-detail>
+`,
+Thanks to the binding, the HeroDetailComponent should receive the hero from the AppComponent and display that hero's detail beneath the list. The detail should update every time the user picks a new hero.
 
-Listing heroes with ngFor
+It's not happening yet!
 
-We want to bind the array of heroes in our component to our template, iterate over them, and display them individually. We’ll need some help from Angular to do this. Let’s do this step by step.
+We click among the heroes. No details. We look for an error in the console of the browser development tools. No error.
 
-First modify the <li> tag by adding the built-in directive *ngFor.
+It is as if Angular were ignoring the new tag. That's because it is ignoring the new tag.
 
-app.component.ts (ngFor)
+The directives array
 
-  <li *ngFor="let hero of heroes">
-The leading asterisk (*) in front of ngFor is a critical part of this syntax.
+A browser ignores HTML tags and attributes that it doesn't recognize. So does Angular.
 
-The (*) prefix to ngFor indicates that the <li> element and its children constitute a master template.
+We've imported HeroDetailComponent, we've used it in the template, but we haven't told Angular about it.
 
-The ngFor directive iterates over the heroes array returned by the AppComponent.heroes property and stamps out instances of this template.
+We tell Angular about it by listing it in the metadata directives array. Let's add that array property to the bottom of the @Component configuration object, immediately after the template and styles properties.
 
-The quoted text assigned to ngFor means “take each hero in the heroes array, store it in the local hero variable, and make it available to the corresponding template instance”.
+app/app.component.ts (Directives)
 
-The let keyword before "hero" identifies the hero as a template input variable. We can reference this variable within the template to access a hero’s properties.
+directives: [HeroDetailComponent]
+It works!
 
-Learn more about ngFor and template input variables in the Displaying Data and Template Syntax chapters.
+When we view our app in the browser we see the list of heroes. When we select a hero we can see the selected hero’s details.
 
-Now we insert some content between the <li> tags that uses the hero template variable to display the hero’s properties.
+What's fundamentally new is that we can use this HeroDetailComponent to show hero details anywhere in the app.
 
-app.component.ts (ngFor template)
+We’ve created our first reusable component!
 
-  <li *ngFor="let hero of heroes">
-    <span class="badge">{{hero.id}}</span> {{hero.name}}
-  </li>
-When the browser refreshes, we see a list of heroes!
+Reviewing the App Structure
 
-Styling our heroes
+Let’s verify that we have the following structure after all of our good refactoring in this chapter:
 
-Our list of heroes looks pretty bland. We want to make it visually obvious to a user which hero we are hovering over and which hero is selected.
+angular2-tour-of-heroes
+app
+app.component.ts
+hero.ts
+hero-detail.component.ts
+main.ts
+node_modules ...
+typings ...
+index.html
+package.json
+tsconfig.json
+typings.json
+Here are the code files we discussed in this chapter.
 
-Let’s add some styles to our component by setting the styles property on the @Component decorator to the following CSS classes:
+app/hero-detail.component.ts 
 
-app.component.ts (Styling)
+import { Component, Input } from '@angular/core';
+import { Hero } from './hero';
+@Component({
+  selector: 'my-hero-detail',
+  template: `
+    <div *ngIf="hero">
+      <h2>{{hero.name}} details!</h2>
+      <div><label>id: </label>{{hero.id}}</div>
+      <div>
+        <label>name: </label>
+        <input [(ngModel)]="hero.name" placeholder="name"/>
+      </div>
+    </div>
+  `
+})
+export class HeroDetailComponent {
+  @Input() 
+  hero: Hero;
+}
 
+app/app.component.ts 
+import { Component } from '@angular/core';
+import { Hero } from './hero';
+import { HeroDetailComponent } from './hero-detail.component';
+@Component({
+  selector: 'my-app',
+  template:`
+    <h1>{{title}}</h1>
+    <h2>My Heroes</h2>
+    <ul class="heroes">
+      <li *ngFor="let hero of heroes"
+        [class.selected]="hero === selectedHero"
+        (click)="onSelect(hero)">
+        <span class="badge">{{hero.id}}</span> {{hero.name}}
+      </li>
+    </ul>
+    <my-hero-detail [hero]="selectedHero"></my-hero-detail>
+  `,
   styles:[`
     .selected {
       background-color: #CFD8DC !important;
@@ -167,247 +298,52 @@ app.component.ts (Styling)
       margin-right: .8em;
       border-radius: 4px 0 0 4px;
     }
-  `]
-Notice that we again use the back-tick notation for multi-line strings.
-
-When we assign styles to a component they are scoped to that specific component. Our styles will only apply to our AppComponent and won't "leak" to the outer HTML.
-
-Our template for displaying the heroes should now look like this:
-
-app.component.ts (Styled heroes)
-
-  <h2>My Heroes</h2>
-  <ul class="heroes">
-    <li *ngFor="let hero of heroes">
-      <span class="badge">{{hero.id}}</span> {{hero.name}}
-    </li>
-  </ul>
-That's a lot of styles! We can put them inline as shown here, or we can move them out to their own file which will make it easier to code our component. We'll do this in a later chapter. For now let's keep rolling.
-
-Selecting a Hero
-
-We have a list of heroes and we have a single hero displayed in our app. The list and the single hero are not connected in any way. We want the user to select a hero from our list, and have the selected hero appear in the details view. This UI pattern is widely known as "master-detail". In our case, the master is the heroes list and the detail is the selected hero.
-
-Let’s connect the master to the detail through a selectedHero component property bound to a click event.
-
-Click event
-
-We modify the <li> by inserting an Angular event binding to its click event.
-
-app.component.ts (Capturing the click event)
-
-  <li *ngFor="let hero of heroes" (click)="onSelect(hero)">
-    <span class="badge">{{hero.id}}</span> {{hero.name}}
-  </li>
-Focus on the event binding
+  `],
+  directives: [HeroDetailComponent]
+})
+export class AppComponent {
+  title = 'Tour of Heroes';
+  heroes = HEROES;
+  selectedHero: Hero;
+  onSelect(hero: Hero) { this.selectedHero = hero; }
+}
+var HEROES: Hero[] = [
+  { "id": 11, "name": "Mr. Nice" },
+  { "id": 12, "name": "Narco" },
+  { "id": 13, "name": "Bombasto" },
+  { "id": 14, "name": "Celeritas" },
+  { "id": 15, "name": "Magneta" },
+  { "id": 16, "name": "RubberMan" },
+  { "id": 17, "name": "Dynama" },
+  { "id": 18, "name": "Dr IQ" },
+  { "id": 19, "name": "Magma" },
+  { "id": 20, "name": "Tornado" }
+];
 
 
-(click)="onSelect(hero)"
-The parenthesis identify the <li> element’s click event as the target. The expression to the right of the equal sign calls the AppComponent method, onSelect(), passing the template input variable hero as an argument. That’s the same hero variable we defined previously in the ngFor.
+app/hero.ts
 
-Learn more about Event Binding in the User Input and Templating Syntax chapters.
-Add the click handler
-
-Our event binding refers to an onSelect method that doesn’t exist yet. We’ll add that method to our component now.
-
-What should that method do? It should set the component’s selected hero to the hero that the user clicked.
-
-Our component doesn’t have a “selected hero” yet either. We’ll start there.
-
-Expose the selected hero
-
-We no longer need the static hero property of the AppComponent. Replace it with this simple selectedHero property:
-
-app.component.ts (selectedHero)
-
-selectedHero: Hero;
-We’ve decided that none of the heroes should be selected before the user picks a hero so we won’t initialize the selectedHero as we were doing with hero.
-
-Now add an onSelect method that sets the selectedHero property to the hero the user clicked.
-
-app.component.ts (onSelect)
-
-onSelect(hero: Hero) { this.selectedHero = hero; }
-We will be showing the selected hero's details in our template. At the moment, it is still referring to the old hero property. Let’s fix the template to bind to the new selectedHero property.
-
-app.component.ts (Binding to the selectedHero's name)
-
-  <h2>{{selectedHero.name}} details!</h2>
-  <div><label>id: </label>{{selectedHero.id}}</div>
-  <div>
-      <label>name: </label>
-      <input [(ngModel)]="selectedHero.name" placeholder="name"/>
-  </div>
-Hide the empty detail with ngIf
-
-When our app loads we see a list of heroes, but a hero is not selected. The selectedHero is undefined. That’s why we'll see the following error in the browser’s console:
+export class Hero {
+  id: number;
+  name: string;
+}
 
 
-EXCEPTION: TypeError: Cannot read property 'name' of undefined in [null]
-Remember that we are displaying selectedHero.name in the template. This name property does not exist because selectedHero itself is undefined.
-
-We'll address this problem by keeping the hero detail out of the DOM until there is a selected hero.
-
-We wrap the HTML hero detail content of our template with a <div>. Then we add the ngIf built-in directive and set it to the selectedHero property of our component.
-
-app.component.ts (ngIf)
-
-  <div *ngIf="selectedHero">
-    <h2>{{selectedHero.name}} details!</h2>
-    <div><label>id: </label>{{selectedHero.id}}</div>
-    <div>
-      <label>name: </label>
-      <input [(ngModel)]="selectedHero.name" placeholder="name"/>
-    </div>
-  </div>
-Remember that the leading asterisk (*) in front of ngIf is a critical part of this syntax.
-When there is no selectedHero, the ngIf directive removes the hero detail HTML from the DOM. There will be no hero detail elements and no bindings to worry about.
-
-When the user picks a hero, selectedHero becomes "truthy" and ngIf puts the hero detail content into the DOM and evaluates the nested bindings.
-
-ngIf and ngFor are called “structural directives” because they can change the structure of portions of the DOM. In other words, they give structure to the way Angular displays content in the DOM.
-
-Learn more about ngIf, ngFor and other structural directives in the Structural Directives and Template Syntax chapters.
-The browser refreshes and we see the list of heroes but not the selected hero detail. The ngIf keeps it out of the DOM as long as the selectedHero is undefined. When we click on a hero in the list, the selected hero displays in the hero details. Everything is working as we expect.
-
-Styling the selection
-
-We see the selected hero in the details area below but we can’t quickly locate that hero in the list above. We can fix that by applying the selected CSS class to the appropriate <li> in the master list. For example, when we select Magneta from the heroes list, we can make it pop out visually by giving it a subtle background color as shown here.
-
-Selected hero
-We’ll add a property binding on class for the selected class to the template. We'll set this to an expression that compares the current selectedHero to the hero.
-
-The key is the name of the CSS class (selected). The value is true if the two heroes match and false otherwise. We’re saying “apply the selected class if the heroes match, remove it if they don’t”.
-
-app.component.ts (Setting the CSS class)
-
-[class.selected]="hero === selectedHero"
-Notice in the template that the class.selected is surrounded in square brackets ([]). This is the syntax for a Property Binding, a binding in which data flows one way from the data source (the expression hero === selectedHero) to a property of class.
-
-app.component.ts (Styling each hero)
-
-  <li *ngFor="let hero of heroes"
-    [class.selected]="hero === selectedHero"
-    (click)="onSelect(hero)">
-    <span class="badge">{{hero.id}}</span> {{hero.name}}
-  </li>
-Learn more about Property Binding in the Template Syntax chapter.
-The browser reloads our app. We select the hero Magneta and the selection is clearly identified by the background color.
-
-Output of heroes list app
-We select a different hero and the tell-tale color switches to that hero.
-
-Here's the complete app.component.ts as it stands now:
-
-app.component.ts
-
-  import { Component } from '@angular/core';
-  export class Hero {
-    id: number;
-    name: string;
-  }
-  @Component({
-    selector: 'my-app',
-    template:`
-      <h1>{{title}}</h1>
-      <h2>My Heroes</h2>
-      <ul class="heroes">
-        <li *ngFor="let hero of heroes"
-          [class.selected]="hero === selectedHero"
-          (click)="onSelect(hero)">
-          <span class="badge">{{hero.id}}</span> {{hero.name}}
-        </li>
-      </ul>
-      <div *ngIf="selectedHero">
-        <h2>{{selectedHero.name}} details!</h2>
-        <div><label>id: </label>{{selectedHero.id}}</div>
-        <div>
-          <label>name: </label>
-          <input [(ngModel)]="selectedHero.name" placeholder="name"/>
-        </div>
-      </div>
-    `,
-    styles:[`
-      .selected {
-        background-color: #CFD8DC !important;
-        color: white;
-      }
-      .heroes {
-        margin: 0 0 2em 0;
-        list-style-type: none;
-        padding: 0;
-        width: 15em;
-      }
-      .heroes li {
-        cursor: pointer;
-        position: relative;
-        left: 0;
-        background-color: #EEE;
-        margin: .5em;
-        padding: .3em 0;
-        height: 1.6em;
-        border-radius: 4px;
-      }
-      .heroes li.selected:hover {
-        background-color: #BBD8DC !important;
-        color: white;
-      }
-      .heroes li:hover {
-        color: #607D8B;
-        background-color: #DDD;
-        left: .1em;
-      }
-      .heroes .text {
-        position: relative;
-        top: -3px;
-      }
-      .heroes .badge {
-        display: inline-block;
-        font-size: small;
-        color: white;
-        padding: 0.8em 0.7em 0 0.7em;
-        background-color: #607D8B;
-        line-height: 1em;
-        position: relative;
-        left: -1px;
-        top: -4px;
-        height: 1.8em;
-        margin-right: .8em;
-        border-radius: 4px 0 0 4px;
-      }
-    `]
-  })
-  export class AppComponent {
-    title = 'Tour of Heroes';
-    heroes = HEROES;
-    selectedHero: Hero;
-    onSelect(hero: Hero) { this.selectedHero = hero; }
-  }
-  var HEROES: Hero[] = [
-    { "id": 11, "name": "Mr. Nice" },
-    { "id": 12, "name": "Narco" },
-    { "id": 13, "name": "Bombasto" },
-    { "id": 14, "name": "Celeritas" },
-    { "id": 15, "name": "Magneta" },
-    { "id": 16, "name": "RubberMan" },
-    { "id": 17, "name": "Dynama" },
-    { "id": 18, "name": "Dr IQ" },
-    { "id": 19, "name": "Magma" },
-    { "id": 20, "name": "Tornado" }
-  ];
 The Road We’ve Travelled
 
-Here’s what we achieved in this chapter:
+Let’s take stock of what we’ve built.
 
-Our Tour of Heroes now displays a list of selectable heroes
-We added the ability to select a hero and show the hero’s details
-We learned how to use the built-in directives ngIf and ngFor in a component’s template
-Run the live example for part 2
+We created a reusable component
+We learned how to make a component accept input
+We learned to bind a parent component to a child component.
+We learned to declare the application directives we need in a directives array.
+Run the live example for part 3.
 
 The Road Ahead
 
-Our Tour of Heroes has grown, but it’s far from complete. We can't put the entire app into a single component. We need to break it up into sub-components and teach them to work together as we learn in the next chapter.
+Our Tour of Heroes has become more reusable with shared components.
 
-Next Step
+We're still getting our (mock) data within the AppComponent. That's not sustainable. We should refactor data access to a separate service and share it among the components that need data.
 
-Multiple Components
+We’ll learn to create services in the next tutorial chapter.
+
